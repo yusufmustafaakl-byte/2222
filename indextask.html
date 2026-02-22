@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engineering Mechanics: Statics Interactive Lab</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- 
+        Background: Stone-50 (#fafaf9)
+        Primary Text: Slate-800 (#1e293b)
+        Accents: Orange-600 (#ea580c) for engineering/industrial feel
+        Secondary: Stone-200 (#e7e5e4)
+    -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bgMain: '#fafaf9',
+                        bgCard: '#ffffff',
+                        textPrimary: '#1e293b',
+                        textSecondary: '#64748b',
+                        accent: '#ea580c',
+                        accentLight: '#ffedd5',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Chart Container Styling as per requirements */
+        .chart-container-2d {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        
+        .chart-container-3d {
+            position: relative;
+            width: 100%;
+            max-width: 100%; /* Plotly handles width better usually */
+            height: 450px;
+            max-height: 500px;
+            margin: 0 auto;
+        }
+
+        /* Smooth tab transitions */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-bgMain text-textPrimary font-sans min-h-screen flex flex-col">
+
+    <!-- Application Structure Plan: 
+         1. Header: Context setting (Course Title, Target Audience).
+         2. Navigation: Tabs for Level 1, Level 2, Level 3 to organize content logically by difficulty.
+         3. Main Content Area:
+            - Level 1 (2D): Concept cards (Scalar/Vector) + Interactive 2D Force Calculator/Chart.
+            - Level 2 (3D): Vector variable inputs + Logic for Dot/Cross product visualization.
+            - Level 3 (Spatial): Coordinate inputs + Torque calculator + 3D Plotly frame.
+         4. Footer: Credits.
+         
+         Rationale: This structure mirrors the progression of the course from basic 2D concepts to complex 3D spatial analysis, allowing students to focus on one difficulty tier at a time.
+    -->
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-stone-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">
+                    <span class="text-accent">Mechatronics</span> Mechanics Lab
+                </h1>
+                <p class="text-sm text-textSecondary hidden md:block">Interactive Problem Set & Solver • 1st Year Engineering</p>
+            </div>
+            <div class="text-xs font-semibold bg-accentLight text-accent px-3 py-1 rounded-full border border-orange-200">
+                Statics Module
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-stone-200">
+        <div class="max-w-6xl mx-auto px-4 flex overflow-x-auto gap-6" id="nav-container">
+            <button onclick="switchTab('level1')" class="nav-btn py-4 border-b-2 border-accent text-accent font-medium whitespace-nowrap transition-colors" id="btn-level1">
+                Level 1: Foundations (2D)
+            </button>
+            <button onclick="switchTab('level2')" class="nav-btn py-4 border-b-2 border-transparent text-textSecondary hover:text-textPrimary font-medium whitespace-nowrap transition-colors" id="btn-level2">
+                Level 2: 3D Vectors & Geometry
+            </button>
+            <button onclick="switchTab('level3')" class="nav-btn py-4 border-b-2 border-transparent text-textSecondary hover:text-textPrimary font-medium whitespace-nowrap transition-colors" id="btn-level3">
+                Level 3: Spatial Torque
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-6xl mx-auto px-4 py-8 w-full">
+
+        <!-- LEVEL 1: FOUNDATIONS -->
+        <!-- Visualization & Content Choices: 
+             - Goal: Clarify Scalar vs Vector and visualize 2D Resultants.
+             - Method: Flip cards for definitions. Chart.js Scatter plot for forces.
+             - Interaction: Edit force magnitudes/angles -> Auto-update resultant calculation and chart.
+        -->
+        <section id="level1" class="tab-content active space-y-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                <h2 class="text-2xl font-bold mb-2">Level 1: Basic Application</h2>
+                <p class="text-textSecondary mb-6">
+                    Focuses on fundamental definitions and 2D vector resolution. This section covers Question 1 (Concepts) and Question 2 (2D Force Resultant) from your sheet.
+                </p>
+
+                <!-- Q1: Conceptual Flip Cards -->
+                <div class="grid md:grid-cols-2 gap-4 mb-8">
+                    <div class="group perspective h-40 cursor-pointer" onclick="this.classList.toggle('flipped')">
+                        <div class="relative preserve-3d group-hover:shadow-lg transition-all duration-500 w-full h-full bg-stone-100 rounded-lg border border-stone-200 p-6 flex flex-col justify-center items-center text-center">
+                            <h3 class="text-lg font-bold text-accent">Scalar vs. Vector</h3>
+                            <p class="text-sm text-textSecondary mt-2">Click to reveal the difference</p>
+                            <!-- Back (Reveal via JS logic simulating flip or simple hide/show for simplicity in SPA) -->
+                            <div class="hidden-answer mt-2 text-sm text-slate-700 hidden">
+                                <strong>Scalar:</strong> Magnitude only (Mass, Speed)<br>
+                                <strong>Vector:</strong> Magnitude + Direction (Force, Velocity)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="group h-40 cursor-pointer bg-stone-100 rounded-lg border border-stone-200 p-6 flex flex-col justify-center items-center text-center hover:shadow-lg transition-all" onclick="document.getElementById('work-answer').classList.toggle('hidden')">
+                        <h3 class="text-lg font-bold text-accent">Work Calculation</h3>
+                        <p class="text-sm text-textSecondary mt-2">Which operation is used?</p>
+                        <div id="work-answer" class="hidden mt-2 text-sm text-slate-700">
+                            <strong>Dot Product:</strong> \( W = \vec{F} \cdot \vec{d} \)<br>
+                            Result is Scalar (Energy has no direction).
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Q2: Interactive 2D Solver -->
+                <div class="border-t border-stone-200 pt-6">
+                    <div class="flex flex-col md:flex-row gap-8">
+                        <!-- Inputs -->
+                        <div class="w-full md:w-1/3 space-y-4">
+                            <h3 class="text-lg font-semibold flex items-center gap-2">
+                                <span class="bg-accent text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                                Force Resultant Solver
+                            </h3>
+                            <div class="space-y-3 bg-stone-50 p-4 rounded-lg">
+                                <div>
+                                    <label class="text-xs font-bold text-textSecondary uppercase">Force 1 (North)</label>
+                                    <div class="flex gap-2">
+                                        <input type="number" id="f1-mag" value="50" class="w-full p-2 border rounded text-sm" oninput="calculateL1()">
+                                        <span class="p-2 text-sm text-stone-500">N @ 90°</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-textSecondary uppercase">Force 2 (30°)</label>
+                                    <div class="flex gap-2">
+                                        <input type="number" id="f2-mag" value="100" class="w-full p-2 border rounded text-sm" oninput="calculateL1()">
+                                        <span class="p-2 text-sm text-stone-500">N @ 30°</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-textSecondary uppercase">Force 3 (-45°)</label>
+                                    <div class="flex gap-2">
+                                        <input type="number" id="f3-mag" value="80" class="w-full p-2 border rounded text-sm" oninput="calculateL1()">
+                                        <span class="p-2 text-sm text-stone-500">N @ 315°</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Results Box -->
+                            <div class="bg-slate-800 text-white p-4 rounded-lg">
+                                <div class="text-xs text-slate-400 uppercase tracking-wider mb-1">Resultant (R)</div>
+                                <div class="text-2xl font-bold text-accentLight" id="l1-result-mag">149.61 N</div>
+                                <div class="text-sm text-slate-300 mt-1" id="l1-result-dir">@ 16.87°</div>
+                                <div class="mt-3 pt-3 border-t border-slate-600 text-xs font-mono">
+                                    Rx: <span id="l1-rx">143.17</span> N<br>
+                                    Ry: <span id="l1-ry">43.43</span> N
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Visualization -->
+                        <div class="w-full md:w-2/3 flex flex-col">
+                            <h4 class="text-sm font-bold text-textSecondary mb-2 text-center">Vector Diagram</h4>
+                            <div class="chart-container-2d bg-white border border-stone-100 rounded-lg">
+                                <canvas id="chartL1"></canvas>
+                            </div>
+                            <p class="text-xs text-center text-textSecondary mt-2">Vectors are drawn from origin (0,0). The Dashed line is the Resultant.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LEVEL 2: 3D VECTORS -->
+        <!-- Visualization & Content Choices: 
+             - Goal: Handle 3D vector math (Dot/Cross) and solve for variables.
+             - Method: Plotly 3D scatter for accurate spatial representation. 
+             - Interaction: Toggle 'c' value or calculate projection.
+        -->
+        <section id="level2" class="tab-content space-y-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                <h2 class="text-2xl font-bold mb-2">Level 2: Standard Exam Problems</h2>
+                <p class="text-textSecondary mb-6">
+                    Challenges involving 3D unit vectors, finding unknown variables for perpendicularity, and calculating geometric properties like projections and areas.
+                </p>
+
+                <div class="grid lg:grid-cols-3 gap-8">
+                    <!-- Controls -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <div class="bg-stone-50 p-4 rounded-lg space-y-4">
+                            <h3 class="font-bold text-slate-800">Vector Inputs</h3>
+                            
+                            <!-- Vector A -->
+                            <div>
+                                <div class="text-xs font-bold text-accent mb-1">Vector A (Fixed)</div>
+                                <div class="grid grid-cols-3 gap-2 text-sm">
+                                    <div class="bg-white p-2 rounded border text-center">4i</div>
+                                    <div class="bg-white p-2 rounded border text-center">-2j</div>
+                                    <div class="bg-white p-2 rounded border text-center">5k</div>
+                                </div>
+                            </div>
+
+                            <!-- Vector B -->
+                            <div>
+                                <div class="text-xs font-bold text-accent mb-1">Vector B (Variable c)</div>
+                                <div class="grid grid-cols-3 gap-2 text-sm items-center">
+                                    <div class="bg-white p-2 rounded border text-center">2i</div>
+                                    <div class="relative">
+                                        <input type="number" id="var-c" value="3" step="0.5" class="w-full p-2 rounded border text-center font-bold text-accent" oninput="calculateL2()">
+                                        <span class="absolute right-1 top-2 text-xs text-stone-400">j</span>
+                                    </div>
+                                    <div class="bg-white p-2 rounded border text-center">-1k</div>
+                                </div>
+                                <p class="text-xs text-stone-500 mt-1">Change middle value (c) to test logic.</p>
+                            </div>
+                        </div>
+
+                        <!-- Calculations Panel -->
+                        <div class="space-y-3">
+                            <!-- Perpendicularity Check -->
+                            <div class="p-3 rounded-lg border border-stone-200" id="perp-card">
+                                <div class="text-xs uppercase font-bold text-textSecondary">Dot Product (A · B)</div>
+                                <div class="flex justify-between items-end">
+                                    <span class="text-xl font-bold" id="dot-prod-val">0</span>
+                                    <span class="text-xs px-2 py-1 rounded bg-stone-100" id="perp-status">Not Perpendicular</span>
+                                </div>
+                                <div class="text-xs text-slate-500 mt-1">Target for 0: c = 1.5</div>
+                            </div>
+
+                            <!-- Projection -->
+                            <div class="p-3 rounded-lg border border-stone-200">
+                                <div class="text-xs uppercase font-bold text-textSecondary">Scalar Projection (A on B)</div>
+                                <div class="text-xl font-bold" id="proj-val">-0.802</div>
+                            </div>
+
+                            <!-- Area -->
+                            <div class="p-3 rounded-lg border border-stone-200">
+                                <div class="text-xs uppercase font-bold text-textSecondary">Parallelogram Area (|A × B|)</div>
+                                <div class="text-xl font-bold text-accent" id="area-val">24.92</div>
+                                <div class="text-xs text-slate-500 mt-1 font-mono" id="cross-prod-vec">-13i + 14j + 16k</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3D Visualization -->
+                    <div class="lg:col-span-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-textSecondary">3D Vector Space</h4>
+                            <span class="text-xs text-accent bg-accentLight px-2 py-1 rounded">Interactive: Rotate & Zoom</span>
+                        </div>
+                        <div class="chart-container-3d bg-white border border-stone-100 rounded-lg shadow-inner" id="plotL2"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LEVEL 3: SPATIAL & TORQUE -->
+        <!-- Visualization & Content Choices: 
+             - Goal: Visualize spatial frame P-Q-R-S and torque vector.
+             - Method: Plotly 3D scatter + Mesh for plane visualization (optional) or simple lines.
+             - Interaction: Edit point coordinates.
+        -->
+        <section id="level3" class="tab-content space-y-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                <h2 class="text-2xl font-bold mb-2">Level 3: Advanced Applications</h2>
+                <p class="text-textSecondary mb-6">
+                    Spatial geometry, coplanarity checks via Triple Scalar Product, and physical Torque calculation in a 3D frame.
+                </p>
+
+                <div class="grid lg:grid-cols-12 gap-6">
+                    <!-- Inputs -->
+                    <div class="lg:col-span-4 space-y-6">
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h3 class="font-bold text-slate-800 mb-3 border-b border-stone-200 pb-2">Coordinates (meters)</h3>
+                            <div class="space-y-2 text-sm">
+                                <div class="grid grid-cols-4 gap-2 items-center font-mono">
+                                    <span class="font-bold">P</span>
+                                    <input type="number" id="p-x" value="1" class="p-1 border rounded" oninput="calculateL3()">
+                                    <input type="number" id="p-y" value="1" class="p-1 border rounded" oninput="calculateL3()">
+                                    <input type="number" id="p-z" value="0" class="p-1 border rounded" oninput="calculateL3()">
+                                </div>
+                                <div class="grid grid-cols-4 gap-2 items-center font-mono">
+                                    <span class="font-bold">Q</span>
+                                    <input type="number" id="q-x" value="3" class="p-1 border rounded" oninput="calculateL3()">
+                                    <input type="number" id="q-y" value="2" class="p-1 border rounded" oninput="calculateL3()">
+                                    <input type="number" id="q-z" value="-1" class="p-1 border rounded" oninput="calculateL3()">
+                                </div>
+                                <div class="grid grid-cols-4 gap-2 items-center font-mono">
+                                    <span class="font-bold">R</span>
+                                    <input type="number" id="r-x" value="-1" class="p-1 border rounded" oninput="calculateL3()">
+                                    <input type="number" id="r-y" value="0" class="p-1 border rounded" oninput="calculateL3()">
+                                    <input type="number" id="r-z" value="2" class="p-1 border rounded" oninput="calculateL3()">
+                                </div>
+                                <div class="grid grid-cols-4 gap-2 items-center font-mono">
+                                    <span class="font-bold">S</span>
+                                    <input type="number" id="s-x" value="0" class="p-1 border rounded" oninput="calculateL3()">
+                                    <input type="number" id="s-y" value="4" class="p-1 border rounded" oninput="calculateL3()">
+                                    <input type="number" id="s-z" value="1" class="p-1 border rounded" oninput="calculateL3()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-800 text-white p-4 rounded-lg space-y-4">
+                            <div>
+                                <div class="text-xs text-slate-400 uppercase tracking-wider mb-1">Coplanarity Check</div>
+                                <div class="text-lg font-bold" id="volume-val">Volume: 7.00 m³</div>
+                                <div class="text-xs text-accentLight" id="coplanar-status">NOT Coplanar</div>
+                            </div>
+                            <div class="pt-4 border-t border-slate-600">
+                                <div class="text-xs text-slate-400 uppercase tracking-wider mb-1">Torque at P (Force at Q)</div>
+                                <div class="font-mono text-sm break-all" id="torque-val">
+                                    τ = -30i - 140j - 200k
+                                </div>
+                                <div class="text-xs text-slate-500 mt-1">Force F = 100i - 50j + 20k</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3D Visualization -->
+                    <div class="lg:col-span-8">
+                        <div class="chart-container-3d bg-white border border-stone-100 rounded-lg shadow-inner" id="plotL3"></div>
+                        <p class="text-xs text-center text-textSecondary mt-2">
+                            Blue: Frame Vectors (PQ, PR, PS) • Red: Torque Vector
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-stone-100 border-t border-stone-200 py-6 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 text-center text-textSecondary text-sm">
+            <p>© 2025 Mechatronics Department. Based on "Engineering Mechanics 1 (Statics) - Problem Set".</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Navigation ---
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Show selected
+            document.getElementById(tabId).classList.add('active');
+            
+            // Update buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('border-accent', 'text-accent');
+                btn.classList.add('border-transparent', 'text-textSecondary');
+            });
+            document.getElementById('btn-' + tabId).classList.remove('border-transparent', 'text-textSecondary');
+            document.getElementById('btn-' + tabId).classList.add('border-accent', 'text-accent');
+
+            // Resize plots if necessary (Plotly sometimes needs a resize trigger when becoming visible)
+            if(tabId === 'level2') Plotly.relayout('plotL2', {autosize: true});
+            if(tabId === 'level3') Plotly.relayout('plotL3', {autosize: true});
+        }
+
+        // --- Level 1 Logic & Visualization (Chart.js) ---
+        let chartL1;
+
+        function initL1Chart() {
+            const ctx = document.getElementById('chartL1').getContext('2d');
+            chartL1 = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [] // Populated by calculateL1
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `(${context.raw.x.toFixed(1)}, ${context.raw.y.toFixed(1)}) N`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            title: { display: true, text: 'Fx (N)' },
+                            grid: { color: '#e7e5e4' },
+                            min: -50, max: 160 // Fixed range for stability
+                        },
+                        y: { 
+                            title: { display: true, text: 'Fy (N)' },
+                            grid: { color: '#e7e5e4' },
+                            min: -100, max: 100
+                        }
+                    }
+                }
+            });
+            calculateL1();
+        }
+
+        function calculateL1() {
+            // Get inputs
+            const f1 = parseFloat(document.getElementById('f1-mag').value) || 0;
+            const f2 = parseFloat(document.getElementById('f2-mag').value) || 0;
+            const f3 = parseFloat(document.getElementById('f3-mag').value) || 0;
+
+            // Angles (fixed per problem)
+            const th1 = 90 * (Math.PI/180);
+            const th2 = 30 * (Math.PI/180);
+            const th3 = -45 * (Math.PI/180);
+
+            // Components
+            const f1x = f1 * Math.cos(th1); const f1y = f1 * Math.sin(th1);
+            const f2x = f2 * Math.cos(th2); const f2y = f2 * Math.sin(th2);
+            const f3x = f3 * Math.cos(th3); const f3y = f3 * Math.sin(th3);
+
+            // Resultant
+            const rx = f1x + f2x + f3x;
+            const ry = f1y + f2y + f3y;
+            const r = Math.sqrt(rx*rx + ry*ry);
+            const thR = Math.atan2(ry, rx) * (180/Math.PI);
+
+            // Update DOM
+            document.getElementById('l1-result-mag').textContent = r.toFixed(2) + " N";
+            document.getElementById('l1-result-dir').textContent = "@ " + thR.toFixed(2) + "°";
+            document.getElementById('l1-rx').textContent = rx.toFixed(2);
+            document.getElementById('l1-ry').textContent = ry.toFixed(2);
+
+            // Update Chart
+            // We draw lines from origin.
+            chartL1.data.datasets = [
+                {
+                    label: 'F1 (North)',
+                    data: [{x:0, y:0}, {x:f1x, y:f1y}],
+                    borderColor: '#64748b', backgroundColor: '#64748b', showLine: true, pointRadius: 3
+                },
+                {
+                    label: 'F2 (30°)',
+                    data: [{x:0, y:0}, {x:f2x, y:f2y}],
+                    borderColor: '#64748b', backgroundColor: '#64748b', showLine: true, pointRadius: 3
+                },
+                {
+                    label: 'F3 (-45°)',
+                    data: [{x:0, y:0}, {x:f3x, y:f3y}],
+                    borderColor: '#64748b', backgroundColor: '#64748b', showLine: true, pointRadius: 3
+                },
+                {
+                    label: 'Resultant',
+                    data: [{x:0, y:0}, {x:rx, y:ry}],
+                    borderColor: '#ea580c', backgroundColor: '#ea580c', showLine: true, borderDash: [5, 5], pointRadius: 4, borderWidth: 2
+                }
+            ];
+            chartL1.update();
+        }
+
+        // --- Level 2 Logic & Visualization (Plotly) ---
+        function calculateL2() {
+            const c = parseFloat(document.getElementById('var-c').value) || 0;
+
+            // Vector A: 4, -2, 5
+            const ax=4, ay=-2, az=5;
+            // Vector B: 2, c, -1
+            const bx=2, by=c, bz=-1;
+
+            // Dot Product
+            const dot = (ax*bx) + (ay*by) + (az*bz);
+            document.getElementById('dot-prod-val').textContent = dot.toFixed(2);
+            
+            const perpEl = document.getElementById('perp-status');
+            const perpCard = document.getElementById('perp-card');
+            
+            if (Math.abs(dot) < 0.1) {
+                perpEl.textContent = "PERPENDICULAR!";
+                perpEl.className = "text-xs px-2 py-1 rounded bg-green-100 text-green-700 font-bold";
+                perpCard.className = "p-3 rounded-lg border border-green-300 bg-green-50";
+            } else {
+                perpEl.textContent = "Not Perpendicular";
+                perpEl.className = "text-xs px-2 py-1 rounded bg-stone-100 text-textSecondary";
+                perpCard.className = "p-3 rounded-lg border border-stone-200";
+            }
+
+            // Magnitudes
+            const magB = Math.sqrt(bx*bx + by*by + bz*bz);
+            
+            // Projection
+            const proj = dot / magB;
+            document.getElementById('proj-val').textContent = proj.toFixed(3);
+
+            // Cross Product
+            const cx = (ay*bz) - (az*by); // (-2*-1) - (5*c) = 2 - 5c
+            const cy = (az*bx) - (ax*bz); // (5*2) - (4*-1) = 10 + 4 = 14
+            const cz = (ax*by) - (ay*bx); // (4*c) - (-2*2) = 4c + 4
+
+            const area = Math.sqrt(cx*cx + cy*cy + cz*cz);
+            document.getElementById('area-val').textContent = area.toFixed(2);
+            document.getElementById('cross-prod-vec').textContent = `${cx.toFixed(1)}i + ${cy.toFixed(1)}j + ${cz.toFixed(1)}k`;
+
+            // Visualization
+            updatePlotL2(ax, ay, az, bx, by, bz, cx, cy, cz);
+        }
+
+        function updatePlotL2(ax, ay, az, bx, by, bz, cx, cy, cz) {
+            const data = [
+                // Vector A
+                {
+                    type: 'scatter3d', mode: 'lines+markers',
+                    x: [0, ax], y: [0, ay], z: [0, az],
+                    line: {width: 6, color: '#1e293b'},
+                    marker: {size: 4, color: '#1e293b'},
+                    name: 'Vec A'
+                },
+                // Vector B
+                {
+                    type: 'scatter3d', mode: 'lines+markers',
+                    x: [0, bx], y: [0, by], z: [0, bz],
+                    line: {width: 6, color: '#64748b'},
+                    marker: {size: 4, color: '#64748b'},
+                    name: 'Vec B'
+                },
+                // Cross Product (Area Vector) - Scaled down for visuals
+                {
+                    type: 'scatter3d', mode: 'lines+markers',
+                    x: [0, cx/5], y: [0, cy/5], z: [0, cz/5],
+                    line: {width: 4, color: '#ea580c', dash:'dash'},
+                    marker: {size: 3, color: '#ea580c'},
+                    name: 'Cross (Scaled)'
+                },
+                // Origin
+                {
+                    type: 'scatter3d', mode: 'markers',
+                    x: [0], y: [0], z: [0],
+                    marker: {size: 5, color: 'black'},
+                    showlegend: false
+                }
+            ];
+
+            const layout = {
+                margin: {l: 0, r: 0, b: 0, t: 0},
+                scene: {
+                    aspectmode: 'cube',
+                    xaxis: {title: 'X'}, yaxis: {title: 'Y'}, zaxis: {title: 'Z'}
+                },
+                showlegend: true,
+                legend: {x: 0, y: 1}
+            };
+
+            Plotly.react('plotL2', data, layout, {displayModeBar: false});
+        }
+
+        // --- Level 3 Logic & Visualization (Plotly) ---
+        function calculateL3() {
+            // Points
+            const P = {x: +document.getElementById('p-x').value, y: +document.getElementById('p-y').value, z: +document.getElementById('p-z').value};
+            const Q = {x: +document.getElementById('q-x').value, y: +document.getElementById('q-y').value, z: +document.getElementById('q-z').value};
+            const R = {x: +document.getElementById('r-x').value, y: +document.getElementById('r-y').value, z: +document.getElementById('r-z').value};
+            const S = {x: +document.getElementById('s-x').value, y: +document.getElementById('s-y').value, z: +document.getElementById('s-z').value};
+
+            // Vectors PQ, PR, PS
+            const pq = {x: Q.x - P.x, y: Q.y - P.y, z: Q.z - P.z};
+            const pr = {x: R.x - P.x, y: R.y - P.y, z: R.z - P.z};
+            const ps = {x: S.x - P.x, y: S.y - P.y, z: S.z - P.z};
+
+            // Volume (Triple Scalar)
+            // PR x PS
+            const crossX = (pr.y * ps.z) - (pr.z * ps.y);
+            const crossY = (pr.z * ps.x) - (pr.x * ps.z);
+            const crossZ = (pr.x * ps.y) - (pr.y * ps.x);
+            // Dot with PQ
+            const vol = Math.abs((pq.x * crossX) + (pq.y * crossY) + (pq.z * crossZ));
+
+            document.getElementById('volume-val').textContent = `Volume: ${vol.toFixed(2)} m³`;
+            const coplEl = document.getElementById('coplanar-status');
+            if(vol < 0.01) {
+                coplEl.textContent = "POINTS ARE COPLANAR";
+                coplEl.className = "text-xs text-green-400 font-bold";
+            } else {
+                coplEl.textContent = "NOT Coplanar (Solid Shape)";
+                coplEl.className = "text-xs text-accentLight";
+            }
+
+            // Torque at P, Force at Q. Force is fixed from problem: 100i - 50j + 20k
+            const F = {x: 100, y: -50, z: 20};
+            // r = PQ
+            // Torque = r x F
+            const tx = (pq.y * F.z) - (pq.z * F.y);
+            const ty = (pq.z * F.x) - (pq.x * F.z);
+            const tz = (pq.x * F.y) - (pq.y * F.x);
+
+            document.getElementById('torque-val').textContent = `τ = ${tx.toFixed(0)}i ${ty>=0?'+':''}${ty.toFixed(0)}j ${tz>=0?'+':''}${tz.toFixed(0)}k`;
+
+            updatePlotL3(P, Q, R, S, tx, ty, tz);
+        }
+
+        function updatePlotL3(P, Q, R, S, tx, ty, tz) {
+            // Visualize Frame P-Q-R-S
+            // Draw lines from P to Q, P to R, P to S
+            const data = [
+                {
+                    type: 'scatter3d', mode: 'lines+markers+text',
+                    x: [P.x, Q.x], y: [P.y, Q.y], z: [P.z, Q.z],
+                    line: {color: '#3b82f6', width: 5},
+                    name: 'PQ', text: ['P', 'Q']
+                },
+                {
+                    type: 'scatter3d', mode: 'lines+markers+text',
+                    x: [P.x, R.x], y: [P.y, R.y], z: [P.z, R.z],
+                    line: {color: '#3b82f6', width: 5},
+                    name: 'PR', text: ['', 'R']
+                },
+                {
+                    type: 'scatter3d', mode: 'lines+markers+text',
+                    x: [P.x, S.x], y: [P.y, S.y], z: [P.z, S.z],
+                    line: {color: '#3b82f6', width: 5},
+                    name: 'PS', text: ['', 'S']
+                },
+                // Torque Vector starting at P
+                {
+                    type: 'scatter3d', mode: 'lines',
+                    x: [P.x, P.x + tx/50], y: [P.y, P.y + ty/50], z: [P.z, P.z + tz/50], // Scaled down
+                    line: {color: '#ea580c', width: 8},
+                    name: 'Torque (Scaled)'
+                }
+            ];
+
+             const layout = {
+                margin: {l: 0, r: 0, b: 0, t: 0},
+                scene: {
+                    xaxis: {title: 'X'}, yaxis: {title: 'Y'}, zaxis: {title: 'Z'}
+                },
+                showlegend: true,
+                legend: {x: 0, y: 1}
+            };
+
+            Plotly.react('plotL3', data, layout, {displayModeBar: false});
+        }
+
+        // --- Initialization ---
+        window.onload = function() {
+            initL1Chart();
+            calculateL2();
+            calculateL3();
+            // Start at level 1
+            switchTab('level1');
+        };
+
+    </script>
+    
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</body>
+</html>
